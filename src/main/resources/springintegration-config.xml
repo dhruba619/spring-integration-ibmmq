@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:jms="http://www.springframework.org/schema/integration/jms"
+    xmlns:util="http://www.springframework.org/schema/util"
+    xmlns:integration="http://www.springframework.org/schema/integration"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/util http://www.springframework.org/schema/beans/spring-beans.xsd http://www.springframework.org/schema/integration/jms http://www.springframework.org/schema/integration/jms/spring-integration-jms.xsd">
+
+
+    <bean id="systemProps"
+        class="org.springframework.beans.factory.config.MethodInvokingFactoryBean">
+        <property name="targetObject" value="#{@systemProperties}" />
+        <property name="targetMethod" value="putAll" />
+        <property name="arguments">
+            <util:properties>
+                <prop key="javax.net.ssl.keyStore">${jms.keystore}</prop>
+                <prop key="javax.net.ssl.keyStorePassword">${jms.keystore.password}</prop>
+                <prop key="javax.net.ssl.trustStore">${jms.truststore}</prop>
+                <prop key="javax.net.ssl.trustStorePassword">${jms.truststore.password}</prop>
+            </util:properties>
+        </property>
+    </bean>
+
+    <bean id="jmsConnectionFactory" class="com.ibm.mq.jms.MQQueueConnectionFactory">
+        <property name="transportType" value="${jms.transportType}" />
+        <property name="queueManager" value="${jms.queueManager}" />
+        <property name="hostName" value="${jms.hostName}" />
+        <property name="port" value="${jms.port}" />
+        <property name="channel" value="${jms.channel}" />
+    </bean>
+
+
+    <bean id="receiverQueue" class="com.ibm.mq.jms.MQQueue">
+        <constructor-arg index="0" value="${jms.queueManager}" />
+        <constructor-arg index="1"
+            value="${jms.receiver.queue.name}" />
+    </bean>
+
+    <jms:message-driven-channel-adapter
+        id="helloWorldJMSAdapater" destination="receiverQueue" channel="helloWorldChannel"
+        connection-factory="jmsConnectionFactory" />
+
+    <integration:channel id="helloWorldChannel" />
+
+    <integration:service-activator id="helloWorldServiceActivator"
+        input-channel="helloWorldChannel" ref="helloWorldAmqService"
+        method="processMsg" />
+</beans>
